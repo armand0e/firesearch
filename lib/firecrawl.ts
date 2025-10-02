@@ -4,12 +4,13 @@ import FirecrawlApp from '@mendable/firecrawl-js';
 export class FirecrawlClient {
   private client: FirecrawlApp;
 
-  constructor(providedApiKey?: string) {
+  constructor(providedApiKey?: string, providedApiUrl?: string) {
     const apiKey = providedApiKey || process.env.FIRECRAWL_API_KEY;
     if (!apiKey) {
       throw new Error('FIRECRAWL_API_KEY is required - either provide it or set it as an environment variable');
     }
-    this.client = new FirecrawlApp({ apiKey });
+    const apiUrl = providedApiUrl || process.env.FIRECRAWL_API_URL;
+    this.client = new FirecrawlApp({ apiKey, apiUrl: apiUrl || undefined });
   }
 
   async scrapeUrl(url: string, timeoutMs: number = 15000) {

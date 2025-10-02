@@ -13,11 +13,16 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 }: MarkdownRendererProps) {
   // Simple markdown parsing
   const parseMarkdown = (text: string) => {
+    // Handle pipe characters (tables or separators) - convert to readable format
+    let parsed = text.replace(/ \| /g, ' • ');
+    parsed = parsed.replace(/^\|/gm, '• ');
+    parsed = parsed.replace(/\|$/gm, '');
+    
     // Handle links [text](url) - must come before citations
-    let parsed = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-700 underline">$1</a>');
+    parsed = parsed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 underline">$1</a>');
     
     // Handle citations [1], [2], etc.
-    parsed = parsed.replace(/\[(\d+)\]/g, '<sup class="citation text-orange-600 cursor-pointer hover:text-orange-700">[$1]</sup>');
+    parsed = parsed.replace(/\[(\d+)\]/g, '<sup class="citation text-orange-600 dark:text-orange-400 cursor-pointer hover:text-orange-700 dark:hover:text-orange-300">[$1]</sup>');
     
     // Bold text
     parsed = parsed.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>');
@@ -78,10 +83,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     parsed = processedLines.join('\n');
     
     // Code blocks
-    parsed = parsed.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-3"><code>$1</code></pre>');
+    parsed = parsed.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded-lg overflow-x-auto my-3"><code>$1</code></pre>');
     
     // Inline code
-    parsed = parsed.replace(/`(.+?)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+    parsed = parsed.replace(/`(.+?)`/g, '<code class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
     
     // Paragraphs
     parsed = parsed.split('\n\n').map(para => {
@@ -99,12 +104,12 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   };
 
   return (
-    <div className="text-gray-700 dark:text-gray-300">
+    <div className="text-gray-800 dark:text-gray-200">
       <div 
         dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }} 
-        className="markdown-content leading-relaxed [&>p]:text-sm [&>ul]:text-sm [&>ol]:text-sm [&_li]:text-sm [&>h1]:text-gray-900 [&>h1]:dark:text-gray-100 [&>h2]:text-gray-900 [&>h2]:dark:text-gray-100 [&>h3]:text-gray-900 [&>h3]:dark:text-gray-100 [&>h4]:text-gray-900 [&>h4]:dark:text-gray-100"
+        className="markdown-content leading-relaxed [&>p]:text-sm [&>p]:text-gray-800 [&>p]:dark:text-gray-200 [&>ul]:text-sm [&>ol]:text-sm [&_li]:text-gray-800 [&_li]:dark:text-gray-200 [&_li]:text-sm [&>h1]:text-gray-900 [&>h1]:dark:text-gray-100 [&>h2]:text-gray-900 [&>h2]:dark:text-gray-100 [&>h3]:text-gray-900 [&>h3]:dark:text-gray-100 [&>h4]:text-gray-900 [&>h4]:dark:text-gray-100 [&_strong]:text-gray-900 [&_strong]:dark:text-white"
       />
-      {streaming && <span className="animate-pulse text-orange-500">▊</span>}
+      {streaming && <span className="animate-pulse text-orange-500 dark:text-orange-400">▊</span>}
     </div>
   );
 });

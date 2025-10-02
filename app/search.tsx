@@ -1,16 +1,46 @@
-'use server';
+"use server";
 
 import { createStreamableValue } from 'ai/rsc';
-import { FirecrawlClient } from '@/lib/firecrawl';
-import { LangGraphSearchEngine as SearchEngine, SearchEvent } from '@/lib/langgraph-search-engine';
+import { FirecrawlClient } from "@/lib/firecrawl";
+import { LangGraphSearchEngine as SearchEngine, SearchEvent } from "@/lib/langgraph-search-engine";
+import { cookies } from 'next/headers';
 
-export async function search(query: string, context?: { query: string; response: string }[], apiKey?: string) {
+type LlmOptions = {
+  apiKey?: string;
+  baseURL?: string;
+  modelFast?: string;
+  modelQuality?: string;
+  streamUsage?: boolean;
+};
+
+export async function search(
+  query: string,
+  context?: { query: string; response: string }[],
+  firecrawlApiKey?: string,
+  options?: { firecrawlApiUrl?: string; llm?: LlmOptions }
+) {
   const stream = createStreamableValue<SearchEvent>();
+  // Work on a local resolved copy of options to avoid undefined mutations
+  const resolvedOptions: { firecrawlApiUrl?: string; llm?: LlmOptions } = options ? { ...options } : {};
   
-  // Create FirecrawlClient with API key if provided
-  const firecrawl = new FirecrawlClient(apiKey);
-  const searchEngine = new SearchEngine(firecrawl);
+  // Fallback to cookie-provided settings when not passed explicitly
+  if (!options || !firecrawlApiKey) {
+    try {
+      const cookieStore = await cookies();
+      const raw = cookieStore.get('firesearch_settings')?.value;
+      if (raw) {
+        const parsed = JSON.parse(decodeURIComponent(raw));
+        if (!resolvedOptions.llm && parsed?.llm) resolvedOptions.llm = parsed.llm;
+        if (!resolvedOptions.firecrawlApiUrl && parsed?.firecrawl?.apiUrl) resolvedOptions.firecrawlApiUrl = parsed.firecrawl.apiUrl;
+        if (!firecrawlApiKey && parsed?.firecrawl?.apiKey) firecrawlApiKey = parsed.firecrawl.apiKey;
+      }
+    } catch {}
+  }
 
+  // Create FirecrawlClient with key and optional custom URL
+  const firecrawl = new FirecrawlClient(firecrawlApiKey, resolvedOptions.firecrawlApiUrl);
+  const searchEngine = new SearchEngine(firecrawl, { llm: resolvedOptions.llm });
+  
   // Run search in background
   (async () => {
     try {

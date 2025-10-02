@@ -1,5 +1,6 @@
 import { StateGraph, END, START, Annotation, MemorySaver } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
+
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { FirecrawlClient } from './firecrawl';
 import { ContextProcessor } from './context-processor';
@@ -160,6 +161,14 @@ interface GraphConfig {
   };
 }
 
+type LlmOptions = {
+  apiKey?: string;
+  baseURL?: string;
+  modelFast?: string;
+  modelQuality?: string;
+  streamUsage?: boolean;
+};
+
 export class LangGraphSearchEngine {
   private firecrawl: FirecrawlClient;
   private contextProcessor: ContextProcessor;
@@ -167,28 +176,49 @@ export class LangGraphSearchEngine {
   private llm: ChatOpenAI;
   private streamingLlm: ChatOpenAI;
   private checkpointer?: MemorySaver;
+  private llmOptions: Required<Pick<LlmOptions, 'apiKey'>> & Partial<LlmOptions>;
 
-  constructor(firecrawl: FirecrawlClient, options?: { enableCheckpointing?: boolean }) {
+  constructor(
+    firecrawl: FirecrawlClient,
+    options?: { enableCheckpointing?: boolean; llm?: LlmOptions }
+  ) {
     this.firecrawl = firecrawl;
     this.contextProcessor = new ContextProcessor();
     
-    const apiKey = process.env.OPENAI_API_KEY;
+    const envKey = process.env.OPENAI_API_KEY;
+    const llm = options?.llm || {};
+    const apiKey = llm.apiKey || envKey;
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
+      throw new Error('OPENAI_API_KEY is not set and no API key was provided via settings');
     }
-    
-    // Initialize LangChain models
+    this.llmOptions = {
+      apiKey,
+      baseURL: llm.baseURL,
+      modelFast: llm.modelFast || MODEL_CONFIG.FAST_MODEL,
+      modelQuality: llm.modelQuality || MODEL_CONFIG.QUALITY_MODEL,
+      streamUsage: llm.streamUsage,
+    };
+
+    // Initialize LangChain models (use modern options)
     this.llm = new ChatOpenAI({
-      modelName: MODEL_CONFIG.FAST_MODEL,
+      model: this.llmOptions.modelFast,
       temperature: MODEL_CONFIG.TEMPERATURE,
-      openAIApiKey: apiKey,
+      apiKey: this.llmOptions.apiKey,
+      streamUsage: this.llmOptions.streamUsage,
+      configuration: {
+        baseURL: this.llmOptions.baseURL,
+      },
     });
     
     this.streamingLlm = new ChatOpenAI({
-      modelName: MODEL_CONFIG.QUALITY_MODEL,
+      model: this.llmOptions.modelQuality,
       temperature: MODEL_CONFIG.TEMPERATURE,
       streaming: true,
-      openAIApiKey: apiKey,
+      apiKey: this.llmOptions.apiKey,
+      streamUsage: this.llmOptions.streamUsage,
+      configuration: {
+        baseURL: this.llmOptions.baseURL,
+      },
     });
 
     // Enable checkpointing if requested
